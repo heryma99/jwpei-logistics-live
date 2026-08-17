@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="20260817103455";</script>
+<script>window.__BUILD__="20260817104400";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -27580,6 +27580,11 @@ function rFreight(){
    谷仓物理仓(2026-08-17 用户提供): USEA新泽西/USWE洛杉矶(合并价) UK伯明翰 FRV巴黎 IT米兰 ES马德里 CZ布拉格 AI墨尔本 AUSY悉尼
    虚拟仓(DE/NL/PL/SE/IE/JP/KR)与FBA 报价数据保留在 tail_eurasia 供查价, 不列入发货仓
    计价模式: gc_us / xp_us / oz_us / wt / wtb / cc / matrix / zones / ccb / ccw / generic */
+/* 新版 rTail：海外仓尾程 · 12 来源（8 谷仓物理仓 + 4 美国服务商）× 全渠道 横向比价 + 费用预估 + 谷仓官方路由推荐
+   数据: OV_DATA.gc_D.tail(谷仓美国) + gc_D.tail_eurasia(谷仓欧亚13国) + warehouses(跨境在线/VIP华人行/万邑通/襄派 美国)
+   谷仓物理仓(2026-08-17 用户提供): USEA新泽西/USWE洛杉矶(合并价) UK伯明翰 FRV巴黎 IT米兰 ES马德里 CZ布拉格 AI墨尔本 AUSY悉尼
+   虚拟仓(DE/NL/PL/SE/IE/JP/KR)与FBA 报价数据保留在 tail_eurasia 供查价, 不列入发货仓
+   计价模式: gc_us / xp_us / oz_us / wt / wtb / cc / matrix / zones / ccb / ccw / generic */
 function rTail(){
   const OV = window.OV_DATA || {};
   const WHS = OV.warehouses || {};
@@ -27588,6 +27593,10 @@ function rTail(){
   const US_G = gcD.tail || {};
   const FX = {USD:7.2,GBP:9.25,EUR:7.85,JPY:0.049,SEK:0.69,CZK:0.31,PLN:1.85,AUD:4.72};
   const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // 谷仓给我们 GC Parcel 尾程 = 报价表 × 0.88（验证 180 单铁证）。可手动调整。
+  let DISC = 0.88;
+  function getDisc(){ const v = parseFloat($("#tcDisc").value); return isFinite(v)&&v>=0&&v<=1 ? v : 0.88; }
+  function cnyDisc(rate, cur){ return (rate||0) * DISC * (FX[cur]||7.2); }
 
   // ---------- 来源仓装配（谷仓物理仓 + 美国服务商） ----------
   const SPECIAL_RE = /大货|卡派|FREIGHT|PALLET|FBA|FTL|LTL|信封|退件|Return|年龄|户外|PUDO|客退|eBay/;
@@ -27839,7 +27848,7 @@ function rTail(){
   function cnv(v,cur){ return v* (FX[cur]||7.2); }
 
   // ---------- UI ----------
-  const skuOpts = (window.GC_SKUS||[]).slice(0,300).map(s=>'<option value="'+esc(s.sku)+'">'+esc(s.sku)+' · '+esc(s.name||'')+'</option>').join('');
+  const skuList = (window.GC_SKUS||[]).map(s=>'<option value="'+esc(s.sku)+'"></option>').join('');
   const whOpts = WHS_LIST.map((w,i)=>'<option value="'+i+'"'+(w.id==='gc-US'?' selected':'')+'>'+esc(w.label)+'</option>').join('');
 
   let h=`<div class="card"><h2>⑤ 尾程比价　<span class="pill">谷仓 8 物理仓 + 跨境在线/VIP华人行/万邑通/襄派 · 同地区横向比价</span></h2>
@@ -27853,9 +27862,11 @@ function rTail(){
     <div style="margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
       <div class="fld"><label>海外仓来源</label><select id="tcWh" class="inline-in">${whOpts}</select></div>
       <div class="fld"><label>目的国</label><select id="tcDest" class="inline-in"></select></div>
-      <div class="fld"><label>SKU（自动带出计费重）</label><select id="tcSku" class="inline-in">${skuOpts}</select></div>
+      <div class="fld"><label>SKU（输入或选）</label><input id="tcSku" class="inline-in" list="tcSkuList" autocomplete="off" placeholder="输入 SKU 编码"></div>
+      <datalist id="tcSkuList">${skuList}</datalist>
       <div class="fld"><label>计费重 kg</label><input id="tcW" type="number" step="0.001" value="2" min="0.01" class="inline-in"></div>
       <div class="fld"><label>件数</label><input id="tcQ" type="number" value="1" min="1" step="1" class="inline-in"></div>
+      <div class="fld"><label>折扣率</label><input id="tcDisc" type="number" step="0.01" min="0" max="1" value="0.88" class="inline-in" style="width:70px" title="实际结算折扣率（默认 88%=12%off，0=全免，1=无折扣）"></div>
       <button id="tcGo" class="act">比价</button>
     </div>
     <div class="note" style="font-size:12px;padding:6px 10px">渠道（可多选/全选，行内可改 分区/目的国）<label style="margin-left:12px;display:inline-flex;align-items:center;gap:4px"><input type="checkbox" id="tcSpecial"> 含大货/卡派/退件/信封/托盘等特殊渠道</label><button id="tcRoute" class="act" style="margin-left:12px;padding:2px 12px">📍 按谷仓官方指南选</button><span id="tcRouteHint" style="margin-left:8px;color:#7ab"></span></div>
@@ -27867,7 +27878,8 @@ function rTail(){
     <div style="margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
       <div class="fld"><label>海外仓来源</label><select id="teWh" class="inline-in">${whOpts}</select></div>
       <div class="fld"><label>目的国</label><select id="teDest" class="inline-in"></select></div>
-      <div class="fld"><label>SKU（自动带出实重/体积）</label><select id="teSku" class="inline-in">${skuOpts}</select></div>
+      <div class="fld"><label>SKU（输入或选）</label><input id="teSku" class="inline-in" list="teSkuList" autocomplete="off" placeholder="输入 SKU 编码"></div>
+      <datalist id="teSkuList">${skuList}</datalist>
       <div class="fld"><label>单件实重 kg</label><input id="teW" type="number" step="0.001" value="2" min="0.01" class="inline-in"></div>
       <div class="fld"><label>长×宽×高 cm</label><input id="teDim" value="30x20x15" class="inline-in" style="min-width:130px"></div>
       <div class="fld"><label>件数</label><input id="teQ" type="number" value="100" min="1" step="1" class="inline-in"></div>
@@ -27910,6 +27922,7 @@ function rTail(){
   $("#tcWh").addEventListener('change',function(){ selChs.clear(); renderDest(''); renderChs(); doCmp(); });
   $("#tcDest").addEventListener('change',function(){ selChs.clear(); renderChs(); doCmp(); });
   $("#tcSku").addEventListener('change',function(){ fillCmp(this.value); doCmp(); });
+  $("#tcDisc").addEventListener('input',function(){ DISC = getDisc(); doCmp(); doEst(); });
   $("#tcSpecial").addEventListener('change',function(){ renderChs(); doCmp(); });
 
   // ---------- 比价 ----------
@@ -27928,16 +27941,18 @@ function rTail(){
     if(!rows.length){ $("#tcOut").innerHTML='<div class="err">无可用渠道（目的国='+esc(dest)+' 无可发渠道，或未勾选）</div>'; return; }
     const priced=rows.filter(x=>x.r!=null);
     let html='<div class="legend">'+esc(whLabel(wh))+' 发 '+esc(dest)+' ｜ 计费重 '+w.toFixed(3)+'kg ｜ 件数 '+q+' ｜ 共 '+rows.length+' 渠道（'+priced.length+' 可计价）</div>';
-    html+='<table class="result-table"><thead><tr><th>渠道</th><th>分区/目的国</th><th>单价</th><th>折¥</th><th>件数</th><th>小计</th></tr></thead><tbody>';
+    html+='<table class="result-table"><thead><tr><th>渠道</th><th>分区/目的国</th><th>单价</th><th>折¥(报价)</th><th>实际价(×'+DISC.toFixed(2)+')</th><th>件数</th><th>小计</th><th>实际小计</th></tr></thead><tbody>';
     priced.forEach((x,i)=>{
       const sel = x.ch.cols && x.ch.cols.length ? '<select data-rk="'+esc(x.ch.key)+'" style="max-width:130px">'+x.ch.cols.map(c=>'<option value="'+esc(c)+'"'+(c===x.col?' selected':'')+'>'+esc(c)+'</option>').join('')+'</select>' : '<span style="color:#888">—</span>';
-      html+=`<tr class="${i===0?'ok':''}"><td>${esc(x.ch.name)}<div style="font-size:11px;color:#999">${esc(x.ch.cur)}${x.ch.eff?' · 生效 '+esc(x.ch.eff):''}</div></td><td>${sel}</td><td>${x.r.toFixed(2)} ${x.ch.cur}</td><td>≈¥${x.cny.toFixed(2)}</td><td>${q}</td><td>${x.sub.toFixed(2)} ${x.ch.cur}</td></tr>`;
+      const cur = x.ch.cur;
+      const actSub = x.sub==null ? null : +(x.sub*DISC).toFixed(2);
+      html+=`<tr class="${i===0?'ok':''}"><td>${esc(x.ch.name)}<div style="font-size:11px;color:#999">${esc(cur)}${x.ch.eff?' · 生效 '+esc(x.ch.eff):''}</div></td><td>${sel}</td><td>${x.r.toFixed(2)} ${cur}</td><td>≈¥${x.cny.toFixed(2)}</td><td style="color:#5fd"><b>≈¥${(x.cny*DISC).toFixed(2)}</b></td><td>${q}</td><td>${x.sub.toFixed(2)} ${cur}</td><td style="color:#5fd"><b>${actSub==null?'—':actSub.toFixed(2)} ${cur}</b></td></tr>`;
     });
     if(rows.some(x=>x.r==null)){
       html+='<tr><td colspan="6" style="color:#a77">复杂表渠道不参与自动比价（'+rows.filter(x=>x.r==null).map(x=>esc(x.ch.name)).join('、')+'），请在源报价表人工查价</td></tr>';
     }
     html+='</tbody></table>';
-    if(priced.length) html+='<div class="kpi-sub">最便宜：<b>'+esc(priced[0].ch.name)+'</b> @ '+priced[0].r.toFixed(2)+' '+priced[0].ch.cur+'（≈¥'+priced[0].cny.toFixed(2)+'）</div>';
+    if(priced.length) html+='<div class="kpi-sub">最便宜：<b>'+esc(priced[0].ch.name)+'</b> @ '+priced[0].r.toFixed(2)+' '+priced[0].ch.cur+'（报价 ≈¥'+priced[0].cny.toFixed(2)+' ｜ <span style="color:#5fd"><b>实际 ≈¥'+(priced[0].cny*DISC).toFixed(2)+'</b></span> ×'+DISC.toFixed(2)+' 折扣）</div>';
     $("#tcOut").innerHTML=html;
     refreshRouteHint();
     $("#tcOut").querySelectorAll('select[data-rk]').forEach(s=>s.addEventListener('change',function(){
@@ -28030,14 +28045,17 @@ function rTail(){
     const priced=rows.filter(x=>x.r!=null).sort((a,b)=>a.cny-b.cny);
     if(!priced.length){ $("#teOut").innerHTML='<div class="err">无可计价渠道</div>'; return; }
     let html='<div class="legend">'+esc(whLabel(wh))+' 发 '+esc(dest)+' ｜ 单件实重 '+w.toFixed(3)+'kg ｜ 体积 '+L+'×'+W+'×'+H+'cm → 体积重 '+volW.toFixed(3)+'kg ｜ 计费重=<b>'+cw.toFixed(3)+'kg</b> ｜ '+q+' 件</div>';
-    html+='<table class="result-table"><thead><tr><th>渠道</th><th>分区/目的国</th><th>单价</th><th>'+q+' 件小计</th><th>折¥</th></tr></thead><tbody>';
+    html+='<table class="result-table"><thead><tr><th>渠道</th><th>分区/目的国</th><th>单价</th><th>'+q+' 件小计</th><th>折¥(报价)</th><th>实际(×'+DISC.toFixed(2)+')</th></tr></thead><tbody>';
     priced.forEach((x,i)=>{
       const sel = x.ch.cols && x.ch.cols.length ? '<select data-rk="'+esc(x.ch.key)+'" style="max-width:130px">'+x.ch.cols.map(c=>'<option value="'+esc(c)+'"'+(c===x.col?' selected':'')+'>'+esc(c)+'</option>').join('')+'</select>' : '<span style="color:#888">—</span>';
-      html+=`<tr class="${i===0?'ok':''}"><td>${esc(x.ch.name)}</td><td>${sel}</td><td>${x.r.toFixed(2)} ${x.ch.cur}</td><td>${x.sub.toFixed(2)} ${x.ch.cur}</td><td>≈¥${x.cny.toFixed(2)}</td></tr>`;
+      const cur = x.ch.cur;
+      const actSub = x.sub==null ? null : +(x.sub*DISC).toFixed(2);
+      html+=`<tr class="${i===0?'ok':''}"><td>${esc(x.ch.name)}</td><td>${sel}</td><td>${x.r.toFixed(2)} ${cur}</td><td>${x.sub.toFixed(2)} ${cur}</td><td>≈¥${x.cny.toFixed(2)}</td><td style="color:#5fd"><b>${actSub==null?'—':'≈¥'+actSub.toFixed(2)}</b></td></tr>`;
     });
     html+='</tbody></table>';
     const b=priced[0];
-    html+='<div class="kpi-sub">最便宜渠道：<b>'+esc(b.ch.name)+'</b>（'+b.r.toFixed(2)+' '+b.ch.cur+'/件）｜ '+q+' 件 = <b>'+b.sub.toFixed(2)+' '+b.ch.cur+'</b>（≈¥'+b.cny.toFixed(2)+'）<br><span style="font-weight:normal;font-size:12px;color:#999">其余渠道请按需单选对比，勿将各渠道合计误作总成本（实际只会选一家发货）。</span></div>';
+    const bAct = b.sub==null?null:+(b.sub*DISC).toFixed(2);
+    html+='<div class="kpi-sub">最便宜渠道：<b>'+esc(b.ch.name)+'</b>（'+b.r.toFixed(2)+' '+b.ch.cur+'/件）｜ '+q+' 件 = <b>'+b.sub.toFixed(2)+' '+b.ch.cur+'</b>（报价 ≈¥'+b.cny.toFixed(2)+' ｜ <span style="color:#5fd"><b>实际 ≈¥'+(bAct==null?'—':bAct.toFixed(2))+'</b></span> ×'+DISC.toFixed(2)+' 折扣）<br><span style="font-weight:normal;font-size:12px;color:#999">其余渠道请按需单选对比，勿将各渠道合计误作总成本（实际只会选一家发货）。</span></div>';
     $("#teOut").innerHTML=html;
     $("#teOut").querySelectorAll('select[data-rk]').forEach(s=>s.addEventListener('change',function(){
       colOverride[this.dataset.rk]=this.value;
@@ -28320,7 +28338,7 @@ function rMom(){
   // 主站顶部 nav 已是 4 业务域切入口；这里只嵌入看板（默认 cat=all）+ 原两期环比折叠区
   let h=`<div class="card"><h2>⑧ 环比分析　<span class="pill">按 4 业务域 · 多版历史报价单</span></h2>
     <div class="note">按主比价工具的 <b>4 业务域分类</b>（小包专线 / 商业快递 / 2B头程 / 海外仓）组织：每个渠道载入<b>历史维护报价单多版</b>，可切换「对比基准版本」逐（国家×重量段）比对运费/kg，<b style="color:#c0392b">红＝涨价</b>、<b style="color:#1a8c6e">绿＝降价</b>。看板上方 Tab 切换业务域，左栏选渠道、右栏看环比详情。</div>
-    <iframe id="mIframe" src="price_change.html?cat=all&embed=1&v=20260817103455" style="width:100%;border:0;background:transparent;display:block;border-radius:12px;margin-top:6px;min-height:1200px" onload="try{this.style.height=(this.contentDocument.body.scrollHeight+40)+'px'}catch(e){this.style.height='1500px'}"></iframe>
+    <iframe id="mIframe" src="price_change.html?cat=all&embed=1&v=20260817104400" style="width:100%;border:0;background:transparent;display:block;border-radius:12px;margin-top:6px;min-height:1200px" onload="try{this.style.height=(this.contentDocument.body.scrollHeight+40)+'px'}catch(e){this.style.height='1500px'}"></iframe>
     <details style="margin-top:14px"><summary style="cursor:pointer;color:var(--acc);font-size:13px">▸ 主站内置两期环比（基于 RATES.history，选模块+目的国）</summary>
       <div style="margin-top:10px">
         <label>模块</label><select id="mMod">${Object.keys(S.modules).filter(k=>S.modules[k].engine==="freight").map(k=>`<option value="${k}">${S.modules[k].name}</option>`).join("")}</select>
