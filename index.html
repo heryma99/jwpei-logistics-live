@@ -28118,7 +28118,9 @@ function rOps(){
     +'<div class="fld"><label>高cm</label><input type="number" id="ovH" class="inline-in" value="15"></div>'
     +'<div class="fld"><label>总体积m³</label><input type="number" step="0.001" id="ovVol" class="inline-in" value="0.009"></div>'
     +'<div class="fld"><label>库龄天数</label><input type="number" id="ovDays" class="inline-in" value="90"></div>'
-    +'<div class="fld"><label>尾程分区</label><select id="ovZone" class="inline-in">'+zoneOpts+'</select></div>'
+    +'<div class="fld"><label>尾程目的国</label><select id="ovTailCountry" class="inline-in"></select> <span id="ovTailNote" class="mut"></span></div>'
+    +'<div class="fld" id="ovZipFld" style="display:none"><label>目的国邮编(美国)</label><input type="text" id="ovZip" class="inline-in" placeholder="如 90001" list="ovZipList"><datalist id="ovZipList"><option value="10001">纽约 NY</option><option value="90001">洛杉矶 CA（美西）</option><option value="60601">芝加哥 IL</option><option value="77001">休斯顿 TX</option><option value="33101">迈阿密 FL</option><option value="98101">西雅图 WA（美西）</option><option value="30301">亚特兰大 GA</option><option value="19101">费城 PA</option><option value="02101">波士顿 MA（美东）</option><option value="94101">旧金山 CA（美西）</option><option value="73301">奥斯汀 TX</option><option value="85001">凤凰城 AZ</option></datalist> <span id="ovZipNote" class="mut"></span></div>'
+    +'<div class="fld"><label>尾程分区(自动)</label><select id="ovZone" class="inline-in" disabled>'+zoneOpts+'</select> <span class="mut">由目的国/邮编自动推算</span></div>'
     +'<div class="fld"><label>去重SKU数</label><input type="number" id="ovSkuU" class="inline-in" value="1"></div>'
     +'<div class="fld"><label>混装SKU行</label><input type="number" id="ovMix" class="inline-in" value="1"></div>'
     +'<div class="fld"><label>新品SKU数</label><input type="number" id="ovNew" class="inline-in" value="0"></div>'
@@ -28129,7 +28131,7 @@ function rOps(){
     +'<div id="ovHeadBox">'
     +'<div class="fld"><label>物流商</label><select id="ovHc" class="inline-in">'+carrierOpts+'<option value="manual">手填金额</option></select></div>'
     +'<div class="fld"><label>渠道</label><select id="ovHch" class="inline-in"></select></div>'
-    +'<div class="fld"><label>目的地</label><select id="ovHr" class="inline-in"></select></div>'
+    +'<div class="fld"><label>目的地(头程→仓)</label><select id="ovHr" class="inline-in" disabled></select> <span id="ovHrNote" class="mut">自动=仓库所在国</span></div>'
     +'<div class="fld"><label>偏远</label><select id="ovHremote" class="inline-in"><option value="no">否</option><option value="yes">是</option></select></div>'
     +'<div class="fld"><label>地址</label><select id="ovHaddr" class="inline-in"><option value="commercial">商业</option><option value="residential">住宅</option></select></div>'
     +'<div class="fld" id="ovHcashFld" style="display:none"><label>手填¥</label><input type="number" id="ovHcash" class="inline-in" value="0"></div>'
@@ -28144,7 +28146,57 @@ function rOps(){
 
   function fillHch(){ const ck=$("#ovHc").value; if(ck==='manual'){ $("#ovHch").innerHTML='<option>—</option>'; $("#ovHr").innerHTML='<option>—</option>'; $("#ovHcashFld").style.display=''; return;} $("#ovHcashFld").style.display='none'; $("#ovHch").innerHTML=chOptsFor(ck); fillHr(); }
   function fillHr(){ const ck=$("#ovHc").value; if(ck==='manual'){return;} $("#ovHr").innerHTML=regOptsFor(ck,$("#ovHch").value); }
-  function updateMeta(){ const w=WH[st.wh]; const m=[]; if(w.region)m.push(E.esc(w.region)); if(w.scope)m.push(E.esc(w.scope)); if(w.bill_month)m.push('费率生效月 '+E.esc(w.bill_month)); $("#ovWhMeta").innerHTML=m.join(' · '); }
+  function updateMeta(){ const w=WH[st.wh]; const m=[]; if(w.region)m.push(E.esc(w.region)); if(w.scope)m.push(E.esc(w.scope)); if(w.bill_month)m.push('费率生效月 '+E.esc(w.bill_month)); $("#ovWhMeta").innerHTML=m.join(' · '); } 
+  // === ⑥ 联动修复：头程锁定仓库国 / 尾程目的国联动 / 美国邮编分区 ===
+  function whCountry(id){
+    var w=WH[id];
+    if(w&&w.region){ var r=(''+w.region).trim();
+      var M={'美国':'US','美西':'US','美东':'US','捷克':'CZ','英国':'UK','法国':'FR','意大利':'IT','西班牙':'ES','德国':'DE','波兰':'PL','澳洲':'AU','澳大利亚':'AU'};
+      if(M[r]) return M[r];
+      if(/^US|^U\.?S|^美/.test(r)) return 'US';
+      if(/捷|CZ|CZECH/i.test(r)) return 'CZ';
+      if(/英|UK|GB|BRIT/i.test(r)) return 'UK';
+      if(/法|FR|FRANCE/i.test(r)) return 'FR';
+      if(/德|DE|GERM/i.test(r)) return 'DE';
+      if(/澳|AU|AUSTR/i.test(r)) return 'AU';
+      if(/意|IT|ITAL/i.test(r)) return 'IT';
+      if(/西|ES|SPAN/i.test(r)) return 'ES';
+      if(/波|PL|POL/i.test(r)) return 'PL';
+    }
+    if(id==='goodcang'||id==='vip'||id==='kuajing'||id==='winit'||(''+id).indexOf('xp:')===0) return 'US';
+    var m=(''+id).match(/^gc-(.+)$/); if(m) return m[1].toUpperCase();
+    return 'US';
+  }
+  var COUNTRY_LABEL={'US':'美国','CZ':'捷克','DE':'德国','AT':'奥地利','BE':'比利时','NL':'荷兰','LU':'卢森堡','FR':'法国','UK':'英国','IT':'意大利','ES':'西班牙','PT':'葡萄牙','IE':'爱尔兰','DK':'丹麦','PL':'波兰','SK':'斯洛伐克','HU':'匈牙利','SI':'斯洛文尼亚','HR':'克罗地亚','SE':'瑞典','FI':'芬兰','EE':'爱沙尼亚','LV':'拉脱维亚','LT':'立陶宛','RO':'罗马尼亚','BG':'保加利亚','GR':'希腊','NO':'挪威','CH':'瑞士','AU':'澳大利亚'};
+  // 谷仓欧亚 尾程分区（Zone 1-8）—— ⚠️ 待用户核对
+  var TAIL_ZONE={'DE':1,'AT':1,'BE':1,'NL':1,'LU':1,'FR':2,'UK':2,'IT':2,'ES':2,'PT':2,'IE':2,'DK':2,'CZ':3,'PL':3,'SK':3,'HU':3,'SI':3,'HR':3,'SE':4,'FI':4,'EE':4,'LV':4,'LT':4,'RO':5,'BG':5,'GR':5,'NO':6,'CH':6};
+  var EU_COUNTRIES=['DE','FR','UK','IT','ES','PT','IE','NL','BE','LU','AT','DK','CZ','PL','SK','HU','SI','HR','SE','FI','EE','LV','LT','RO','BG','GR','NO','CH'];
+  function tailZoneByIso(iso){ return TAIL_ZONE[iso]||8; }
+  function zipToUSZone(zip){ var z=(''+zip).replace(/\D/g,''); if(!z) return 8; var d=parseInt(z.slice(0,1),10); if(isNaN(d)) return 8; if(d<=1) return 2; if(d===2||d===3) return 3; if(d===4) return 4; if(d===5) return 5; if(d===6) return 6; if(d===7) return 7; return 8; }
+  function zipEastWest(zip){ var z=zipToUSZone(zip); return z<=3?'美东':(z<=6?'美中':'美西'); }
+  function renderTailCountry(){
+    var cc=whCountry(st.wh); var sel=document.getElementById('ovTailCountry'); if(!sel) return;
+    if(cc==='US'){ sel.innerHTML='<option value="US">美国</option>'; document.getElementById('ovZipFld').style.display=''; }
+    else if(cc==='AU'){ sel.innerHTML='<option value="AU">澳大利亚</option>'; document.getElementById('ovZipFld').style.display='none'; }
+    else { sel.innerHTML=EU_COUNTRIES.map(function(c){return '<option value="'+c+'">'+COUNTRY_LABEL[c]+'</option>';}).join(''); document.getElementById('ovZipFld').style.display='none'; }
+  }
+  function syncHead(){
+    var cc=whCountry(st.wh); var sel=document.getElementById('ovHr'); if(!sel) return;
+    var ck=document.getElementById('ovHc').value;
+    if(ck==='manual'){ sel.disabled=true; document.getElementById('ovHrNote').textContent='手填金额·头程国不限制'; return; }
+    var found=null;
+    for(var i=0;i<sel.options.length;i++){ if(sel.options[i].value===cc){found=sel.options[i];break;} }
+    if(!found){ var eu=(cc in TAIL_ZONE)||EU_COUNTRIES.indexOf(cc)>=0;
+      for(var j=0;j<sel.options.length;j++){ var t=(sel.options[j].text||'')+' '+(sel.options[j].value||''); if(eu&&/欧|EU|EUR|Europe/i.test(t)){found=sel.options[j];break;} if(cc==='US'&&/美|US|U\.S/i.test(t)){found=sel.options[j];break;} } }
+    if(found){ sel.value=found.value; sel.disabled=true; document.getElementById('ovHrNote').textContent='已锁定 → '+found.text+'（=仓库所在国）'; }
+    else { sel.disabled=false; document.getElementById('ovHrNote').textContent='⚠️ 该物流商未覆盖仓库国 '+COUNTRY_LABEL[cc]+'，请手选或换物流商'; }
+  }
+  function syncTail(){
+    var sel=document.getElementById('ovTailCountry'); if(!sel) return;
+    var iso=sel.value; var zoneEl=document.getElementById('ovZone');
+    if(iso==='US'){ var zip=document.getElementById('ovZip').value; var z=zipToUSZone(zip); zoneEl.value=z; var ew=zipEastWest(zip); document.getElementById('ovTailNote').textContent= (zip? ('邮编 '+zip+' → '+ew+' (Zone'+z+')') : '请输入邮编推算美东/美西'); }
+    else { var z2=tailZoneByIso(iso); zoneEl.value=z2; document.getElementById('ovTailNote').textContent='目的国 '+COUNTRY_LABEL[iso]+' → Zone'+z2+'（⚠️欧亚分区待核对）'; }
+  }
 
   function renderSeg(){
     let btns=SEGS.map((s,i)=>'<button class="seg-btn'+(st.seg===i?' on':'')+'" data-seg="'+i+'">'+segLabels[i]+'</button>').join('');
@@ -28261,14 +28313,16 @@ function rOps(){
     if(cmpOn){ drawCompare(); } else { renderSeg(); drawDetail(); }
   }
 
-  $("#ovHc").onchange=fillHch; $("#ovHch").onchange=fillHr; fillHch();
+  $("#ovHc").onchange=function(){fillHch(); syncHead();}; $("#ovHch").onchange=function(){fillHr(); syncHead();}; fillHch(); renderTailCountry(); syncHead(); syncTail();
   $("#ovHeadMode").onchange=function(){ const on=this.value==='include'; const box=document.getElementById('ovHeadBox'); if(box) box.style.display=on?'':'none'; draw(); };
-  $("#ovWh").onchange=function(){ st.wh=this.value; if(!$("#ovCmp").checked){ renderSeg(); } drawDetail(); };
+  $("#ovWh").onchange=function(){ st.wh=this.value; if(!$("#ovCmp").checked){ renderSeg(); } renderTailCountry(); syncHead(); syncTail(); drawDetail(); };
   $("#ovCmp").onchange=draw;
   document.querySelectorAll('.ovCmpWh').forEach(c=> c.onchange=()=>{ if($("#ovCmp").checked) drawCompare(); });
   $("#ovSku").oninput=function(){ const g=GC[this.value]; if(!g) return; const f=v=>(+v||0); $("#ovKg").value=f(g.weight); $("#ovL").value=f(g.l); $("#ovW").value=f(g.w); $("#ovH").value=f(g.h); };
   $("#ovQty").oninput=function(){ const q=+$("#ovQty").value||0,L=+$("#ovL").value||0,W=+$("#ovW").value||0,H=+$("#ovH").value||0; $("#ovVol").value=((L*W*H/1e6)*q).toFixed(4); };
   $("#ovRun").onclick=draw;
+  $("#ovTailCountry").onchange=function(){ syncTail(); };
+  $("#ovZip").oninput=function(){ syncTail(); };
   updateMeta(); draw();
 }
 
