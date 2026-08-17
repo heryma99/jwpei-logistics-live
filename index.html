@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<script>window.__BUILD__="20260817095411";</script>
+<script>window.__BUILD__="20260817103455";</script>
 <script>
 // 自动版本检测：每次打开都会绕过缓存比对线上 version.json，发现新版就自动刷新一次，免去手动清缓存/无痕。
 (function(){
@@ -27575,6 +27575,11 @@ function rFreight(){
    谷仓物理仓(2026-08-17 用户提供): USEA新泽西/USWE洛杉矶(合并价) UK伯明翰 FRV巴黎 IT米兰 ES马德里 CZ布拉格 AI墨尔本 AUSY悉尼
    虚拟仓(DE/NL/PL/SE/IE/JP/KR)与FBA 报价数据保留在 tail_eurasia 供查价, 不列入发货仓
    计价模式: gc_us / xp_us / oz_us / wt / wtb / cc / matrix / zones / ccb / ccw / generic */
+/* 新版 rTail：海外仓尾程 · 12 来源（8 谷仓物理仓 + 4 美国服务商）× 全渠道 横向比价 + 费用预估 + 谷仓官方路由推荐
+   数据: OV_DATA.gc_D.tail(谷仓美国) + gc_D.tail_eurasia(谷仓欧亚13国) + warehouses(跨境在线/VIP华人行/万邑通/襄派 美国)
+   谷仓物理仓(2026-08-17 用户提供): USEA新泽西/USWE洛杉矶(合并价) UK伯明翰 FRV巴黎 IT米兰 ES马德里 CZ布拉格 AI墨尔本 AUSY悉尼
+   虚拟仓(DE/NL/PL/SE/IE/JP/KR)与FBA 报价数据保留在 tail_eurasia 供查价, 不列入发货仓
+   计价模式: gc_us / xp_us / oz_us / wt / wtb / cc / matrix / zones / ccb / ccw / generic */
 function rTail(){
   const OV = window.OV_DATA || {};
   const WHS = OV.warehouses || {};
@@ -27691,6 +27696,12 @@ function rTail(){
   addIso('TR',['TR','Turkey','土耳其']);
   function isoOf(v){ return ISO[String(v==null?'':v)] || String(v==null?'':v); }
   function isKnownCountry(k){ return !!ISO[String(k==null?'':k)]; }
+  // 国家名→中文显示（按 ISO 值归一，从 ISO 表里找同 ISO 的中文别名）
+  function cnOf(k){
+    const s=String(k==null?'':k); const v=ISO[s]; if(!v) return s;
+    for(const kk in ISO){ if(ISO[kk]===v && /[\u4e00-\u9fa5]/.test(kk)) return kk; }
+    return s;
+  }
 
   // 第1层 同仓本地渠道（谷仓官方指定，按仓 ISO）
   const LOCAL_MAP = {
@@ -27878,7 +27889,7 @@ function rTail(){
   function curWh(){ return WHS_LIST[+$("#tcWh").value] || WHS_LIST[0]; }
   function renderDest(sel){
     const wh=curWh(); const opts=destOptsOf(wh);
-    $("#tcDest").innerHTML=opts.map(d=>'<option value="'+esc(d)+'"'+(d===sel?' selected':'')+'>'+esc(d)+'</option>').join('');
+    $("#tcDest").innerHTML=opts.map(d=>'<option value="'+esc(d)+'"'+(d===sel?' selected':'')+'>'+esc(cnOf(d))+'</option>').join('');
   }
   function renderChs(){
     const wh=curWh(), dest=$("#tcDest").value||whCC(wh), inc=$("#tcSpecial").checked;
@@ -27943,6 +27954,10 @@ function rTail(){
     if(!rt){ el.innerHTML='（此目的国暂无谷仓官方指南条目）'; return; }
     const layerTxt = rt.layer===1?'同仓本地':(rt.layer===2?'跨仓国际':'就近兜底');
     let s='📍 谷仓官方指南('+layerTxt+')：<b>'+esc(rt.label)+'</b> → '+esc(rt.wh.label)+'「'+esc(rt.ch.name.replace(/[-_]?价格表$/,''))+'」';
+    if(rt.alts.length>1 && rt.wh.id !== rt.alts[0].wh.id){
+      s+=' → '+esc(rt.alts[0].wh.label)+'「'+esc(rt.alts[0].ch.name.replace(/[-_]?价格表$/,''))+'」';
+    }
+    s+=' ｜ 发 '+esc(cnOf(rt.iso||dest))+' ｜ 计费重 '+(typeof rt.cw==='number'?rt.cw.toFixed(3)+'kg':'')+' ｜ '+q+' 件';
     if(rt.layer===3 && rt.alts.length>1){
       const others=rt.alts.filter(a=>a.wh.id!==rt.wh.id);
       if(others.length){
@@ -28305,7 +28320,7 @@ function rMom(){
   // 主站顶部 nav 已是 4 业务域切入口；这里只嵌入看板（默认 cat=all）+ 原两期环比折叠区
   let h=`<div class="card"><h2>⑧ 环比分析　<span class="pill">按 4 业务域 · 多版历史报价单</span></h2>
     <div class="note">按主比价工具的 <b>4 业务域分类</b>（小包专线 / 商业快递 / 2B头程 / 海外仓）组织：每个渠道载入<b>历史维护报价单多版</b>，可切换「对比基准版本」逐（国家×重量段）比对运费/kg，<b style="color:#c0392b">红＝涨价</b>、<b style="color:#1a8c6e">绿＝降价</b>。看板上方 Tab 切换业务域，左栏选渠道、右栏看环比详情。</div>
-    <iframe id="mIframe" src="price_change.html?cat=all&embed=1&v=20260817095411" style="width:100%;border:0;background:transparent;display:block;border-radius:12px;margin-top:6px;min-height:1200px" onload="try{this.style.height=(this.contentDocument.body.scrollHeight+40)+'px'}catch(e){this.style.height='1500px'}"></iframe>
+    <iframe id="mIframe" src="price_change.html?cat=all&embed=1&v=20260817103455" style="width:100%;border:0;background:transparent;display:block;border-radius:12px;margin-top:6px;min-height:1200px" onload="try{this.style.height=(this.contentDocument.body.scrollHeight+40)+'px'}catch(e){this.style.height='1500px'}"></iframe>
     <details style="margin-top:14px"><summary style="cursor:pointer;color:var(--acc);font-size:13px">▸ 主站内置两期环比（基于 RATES.history，选模块+目的国）</summary>
       <div style="margin-top:10px">
         <label>模块</label><select id="mMod">${Object.keys(S.modules).filter(k=>S.modules[k].engine==="freight").map(k=>`<option value="${k}">${S.modules[k].name}</option>`).join("")}</select>
